@@ -1,0 +1,46 @@
+import React from 'react';
+import { Bell, Settings } from 'lucide-react';
+import { Link, NavLink } from 'react-router-dom';
+
+const navLinkClass = ({ isActive }) =>
+  `font-medium pb-1 transition-colors ${
+    isActive
+      ? 'text-[#145be9] border-b-2 border-[#145be9]'
+      : 'text-gray-500 hover:text-gray-800'
+  }`;
+
+const Navbar = () => {
+  return (
+    <nav className="w-full bg-white border-b border-gray-100 flex items-center justify-between px-8 py-4">
+      {/* Logo */}
+      <div className="flex items-center space-x-1">
+        <span className="text-xl font-bold text-[#1a2b4b]">Quick</span>
+        <span className="text-xl font-bold text-[#145be9]">Quote</span>
+      </div>
+
+      {/* Nav Links - Desktop */}
+      <div className="hidden md:flex items-center space-x-8">
+        <NavLink to="/" end className={navLinkClass}>Home</NavLink>
+        <NavLink to="/quotations" className={navLinkClass}>Quotations</NavLink>
+        <NavLink to="/pricing" className={navLinkClass}>Pricing</NavLink>
+        <NavLink to="/account" className={navLinkClass}>Account</NavLink>
+      </div>
+
+      {/* Right Actions */}
+      <div className="flex items-center space-x-4">
+        <Link to="/login">
+          <button className="text-[#1a2b4b] hover:text-[#145be9] font-semibold transition-colors px-4 py-2 cursor-pointer">
+            Login
+          </button>
+        </Link>
+        <Link to="/register">
+          <button className="bg-[#145be9] hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer">
+            Register
+          </button>
+        </Link>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
