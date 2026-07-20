@@ -14,6 +14,7 @@ import {
   Pencil,
   Phone,
   Search,
+  Send,
   Share2,
   User,
   X,
@@ -146,9 +147,8 @@ const QuotationDetailsModal = ({ quotation, onClose }) => {
                 Status
               </p>
               <span
-                className={`inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wider ${
-                  statusStyles[quotation.status] || 'bg-slate-50 text-slate-600 border-slate-100'
-                }`}
+                className={`inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wider ${statusStyles[quotation.status] || 'bg-slate-50 text-slate-600 border-slate-100'
+                  }`}
               >
                 {quotation.status}
               </span>
@@ -378,7 +378,7 @@ const ShareRecordsModal = ({ isOpen, quotations, onClose, onShared }) => {
   };
 
   const handleSelectQuotation = (id) => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(qId => qId !== id) : [...prev, id]
     );
   };
@@ -476,10 +476,9 @@ const ShareRecordsModal = ({ isOpen, quotations, onClose, onShared }) => {
                         {quotation.quotationNumber}
                       </span>
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
-                          statusStyles[quotation.status] ||
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${statusStyles[quotation.status] ||
                           'bg-slate-50 text-slate-600 border-slate-100'
-                        }`}
+                          }`}
                       >
                         {quotation.status}
                       </span>
@@ -534,11 +533,11 @@ const ShareRecordsModal = ({ isOpen, quotations, onClose, onShared }) => {
 const renderTemplateById = (templateId, quotation) => {
   const props = { isVertical: true, quotation };
   switch (templateId) {
-    case 'simple':    return <Simple {...props} />;
-    case 'dual':      return <DualPageFormat {...props} />;
+    case 'simple': return <Simple {...props} />;
+    case 'dual': return <DualPageFormat {...props} />;
     case 'threepage': return <ThreePageDesign {...props} />;
-    case 'fourpage':  return <Complete4PageFormat {...props} />;
-    default:          return <Simple {...props} />;
+    case 'fourpage': return <Complete4PageFormat {...props} />;
+    default: return <Simple {...props} />;
   }
 };
 
@@ -628,7 +627,7 @@ const QuotationHubView = ({ quotation, onBack, navigate }) => {
               <LayoutTemplate className="h-3.5 w-3.5" />
               Change Template
             </button>
-            <button 
+            <button
               onClick={() => handleExportPdf()}
               className="px-5 py-2 rounded-xl text-[11px] font-black text-white bg-[#0557cc] hover:bg-[#0449ad] shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap"
             >
@@ -642,14 +641,12 @@ const QuotationHubView = ({ quotation, onBack, navigate }) => {
       {/* Status Strip */}
       <div className="border-b border-slate-100 bg-white px-6 py-3">
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          <span className={`inline-flex rounded-full border px-3 py-1 font-black uppercase tracking-wider ${
-            statusStyles[quotation.status] || 'bg-slate-50 text-slate-600 border-slate-100'
-          }`}>
+          <span className={`inline-flex rounded-full border px-3 py-1 font-black uppercase tracking-wider ${statusStyles[quotation.status] || 'bg-slate-50 text-slate-600 border-slate-100'
+            }`}>
             {quotation.status}
           </span>
-          <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-black uppercase tracking-wider ${
-            responseStyles[responseStatus] || responseStyles.Pending
-          }`}>
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-black uppercase tracking-wider ${responseStyles[responseStatus] || responseStyles.Pending
+            }`}>
             {responseStatus === 'Accepted' ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
             {responseStatus === 'Rejected' ? <XCircle className="h-3.5 w-3.5" /> : null}
             Customer {responseStatus}
@@ -673,9 +670,8 @@ const QuotationHubView = ({ quotation, onBack, navigate }) => {
 
       <div className="border-b border-slate-100 bg-white px-4 py-4 sm:px-6">
         <div
-          className={`rounded-2xl border p-4 ${
-            responseStyles[responseStatus] || responseStyles.Pending
-          }`}
+          className={`rounded-2xl border p-4 ${responseStyles[responseStatus] || responseStyles.Pending
+            }`}
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -729,6 +725,20 @@ const QuotationPreviewPage = () => {
   const { user } = useAuthStore();
   useCurrentUser();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [sendingId, setSendingId] = useState(null);
+
+  const handleSendSingle = async (quotationId) => {
+    setSendingId(quotationId);
+    try {
+      const response = await quotationApi.shareQuotations([quotationId]);
+      alert(response.message || 'Shared 1 quotation');
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to share selected quotation(s)');
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   const {
     data: quotationsResponse,
@@ -861,9 +871,9 @@ const QuotationPreviewPage = () => {
             >
               Create New
             </button>
-            <button 
+            <button
               onClick={() => setIsShareModalOpen(true)}
-            className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-[#0557cc] hover:bg-[#0449ad] shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap">
+              className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-[#0557cc] hover:bg-[#0449ad] shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap">
               <Share2 className="h-4 w-4" />
               <span>Share Records</span>
             </button>
@@ -888,11 +898,10 @@ const QuotationPreviewPage = () => {
               {shouldShowQuotationLimit ? (
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div
-                    className={`inline-flex w-fit items-center gap-3 rounded-2xl border px-5 py-3 shadow-sm ${
-                      isQuotationLimitReached
+                    className={`inline-flex w-fit items-center gap-3 rounded-2xl border px-5 py-3 shadow-sm ${isQuotationLimitReached
                         ? 'border-red-200 bg-red-50 text-red-600 shadow-red-100/70'
                         : 'border-green-200 bg-green-50 text-green-600 shadow-green-100/70'
-                    }`}
+                      }`}
                   >
                     <FileText className="h-5 w-5" />
                     <div className="flex items-baseline gap-2">
@@ -974,20 +983,18 @@ const QuotationPreviewPage = () => {
               return (
                 <div
                   key={quotation._id}
-                  className={`group rounded-[1.75rem] border p-5 text-left transition-all ${
-                    isActive
+                  className={`group rounded-[1.75rem] border p-5 text-left transition-all ${isActive
                       ? 'border-blue-200 bg-blue-50/80 shadow-[0_15px_35px_rgba(20,91,233,0.12)]'
                       : 'border-white bg-white shadow-sm hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]'
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex min-w-0 items-start gap-4">
                       <div
-                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-black ${
-                          isActive
+                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-black ${isActive
                             ? 'bg-[#145be9] text-white shadow-lg shadow-blue-500/20'
                             : 'bg-[#eef2fa] text-[#1a2b4b]'
-                        }`}
+                          }`}
                       >
                         {quotation.customer?.businessName
                           ?.split(' ')
@@ -1003,17 +1010,15 @@ const QuotationPreviewPage = () => {
                             {quotation.quotationNumber}
                           </span>
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
-                              statusStyles[quotation.status] ||
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${statusStyles[quotation.status] ||
                               'bg-slate-50 text-slate-600 border-slate-100'
-                            }`}
+                              }`}
                           >
                             {quotation.status}
                           </span>
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
-                              responseStyles[responseStatus] || responseStyles.Pending
-                            }`}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${responseStyles[responseStatus] || responseStyles.Pending
+                              }`}
                           >
                             {responseStatus === 'Accepted' ? <CheckCircle2 className="h-3 w-3" /> : null}
                             {responseStatus === 'Rejected' ? <XCircle className="h-3 w-3" /> : null}
@@ -1063,13 +1068,12 @@ const QuotationPreviewPage = () => {
                             Customer Reply
                           </p>
                           <p
-                            className={`text-sm font-black ${
-                              responseStatus === 'Accepted'
+                            className={`text-sm font-black ${responseStatus === 'Accepted'
                                 ? 'text-emerald-600'
                                 : responseStatus === 'Rejected'
                                   ? 'text-rose-600'
                                   : 'text-slate-500'
-                            }`}
+                              }`}
                           >
                             {responseStatus}
                           </p>
@@ -1100,6 +1104,19 @@ const QuotationPreviewPage = () => {
                         >
                           <Eye className="h-4 w-4" />
                           View Quote
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendSingle(quotation._id)}
+                          disabled={sendingId === quotation._id}
+                          className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600 transition-all group-hover:bg-[#145be9] group-hover:text-white"
+                        >
+                          {sendingId === quotation._id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          {sendingId === quotation._id ? 'Sending...' : 'Send Quotation'}
                         </button>
                       </div>
                     </div>
@@ -1134,7 +1151,7 @@ const QuotationPreviewPage = () => {
       ) : null}
 
       {/* Share Records Modal */}
-      <ShareRecordsModal 
+      <ShareRecordsModal
         isOpen={isShareModalOpen}
         quotations={quotations}
         onClose={() => setIsShareModalOpen(false)}
