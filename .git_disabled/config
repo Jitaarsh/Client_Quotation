@@ -1,0 +1,12 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[remote "origin"]
+	url = https://github.com/Jitaarsh/Client_Quotation.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "client_second"]
+	vscode-merge-base = origin/main
