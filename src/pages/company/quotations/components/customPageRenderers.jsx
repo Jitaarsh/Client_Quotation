@@ -1,4 +1,3 @@
-import React from 'react';
 import DesignLayer from './DesignLayer';
 import { Calendar, Clock, CheckSquare, MapPin, Globe, BadgeCheck, Briefcase, Building2 } from 'lucide-react';
 import { chunkHtmlElements, plainTextToHtml } from '../../../../utils/pdfTextExtractor';
@@ -676,6 +675,7 @@ export const renderCoverPage = (config, data, companyInfo) => {
 
 export const renderItemsPage = (config, data) => {
   const showProductImages = !!config.showProductImages;
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
   const FALLBACK_DESC =
     'Comprehensive technical details for this component. This item has been selected for its structural integrity, aesthetic alignment, and adherence to the project scope requirements.';
@@ -699,7 +699,7 @@ export const renderItemsPage = (config, data) => {
           if (item.productImage) {
             imgUrl = item.productImage.startsWith('http')
               ? item.productImage
-              : `http://localhost:5000/${item.productImage}`;
+              : `${BASE_URL}/${item.productImage}`;
           }
 
           const description = item.description?.trim() || FALLBACK_DESC;
@@ -787,6 +787,62 @@ export const renderItemsPage = (config, data) => {
         <div>Quotation: {data.quotationNumber}</div>
         <div>Page Items Breakdown</div>
       </div>
+    </div>
+  );
+};
+
+export const CatalogPdfRenderer = ({ dataUrl, itemName, pageNum, showHeader }) => {
+  // Header height is fixed at 72px (pt-32px + pb-16px + ~24px text).
+  // The image fills the remaining vertical space so the catalog content
+  // occupies the full A4 page area and is never letterboxed.
+  const headerHeight = showHeader ? 72 : 0;
+  const imageHeight = 1123 - headerHeight;
+
+  return (
+    <div
+      className="relative bg-white flex flex-col shrink-0 w-[794px] h-[1123px] min-w-[794px] min-h-[1123px] border border-gray-100 select-none overflow-hidden"
+    >
+      {showHeader && (
+        <div
+          className="px-[48px] pt-[32px] pb-[16px] border-b border-gray-100 shrink-0"
+          style={{ height: headerHeight }}
+        >
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            Product Catalog
+          </p>
+          <h4 className="text-[15px] font-black text-[#1a2b4b] mt-1">{itemName}</h4>
+        </div>
+      )}
+      {/* objectFit:fill stretches the rasterised canvas to fill the slot exactly.
+          The canvas was already rendered at 2× resolution for sharpness, so
+          scaling it back down to the A4 width produces a crisp result. */}
+      <img
+        src={dataUrl}
+        alt={`${itemName} catalog page ${pageNum}`}
+        style={{
+          width: '100%',
+          height: imageHeight,
+          display: 'block',
+          objectFit: 'fill',
+          flexShrink: 0,
+        }}
+      />
+    </div>
+  );
+};
+
+export const renderCatalogsPage = (data) => {
+  const items = (data?.items || []).filter((item) => item.cataloguePdf);
+  const hasCatalogs = items.length > 0;
+
+  return (
+    <div className="relative bg-white flex flex-col items-center justify-center shrink-0 w-[794px] h-[1123px] min-w-[794px] min-h-[1123px] border border-gray-100 select-none">
+      <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+        {hasCatalogs ? 'Loading product catalogs...' : 'No product catalogs attached'}
+      </p>
+      <p className="text-[10px] text-gray-300 mt-2">
+        {hasCatalogs ? 'Preparing catalog pages for preview' : 'Add catalog PDFs to products to display them here'}
+      </p>
     </div>
   );
 };

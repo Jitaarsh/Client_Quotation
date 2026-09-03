@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, registerUser, updateProfile, changePassword } from '../api/authApi';
+import { loginUser, registerUser, updateProfile, changePassword, googleLoginUser } from '../api/authApi';
 import useAuthStore from '../store/authStore';
 import { toast } from 'react-hot-toast';
 import { isManagementUser } from '../utils/managementUser';
@@ -29,6 +29,27 @@ export const useLogin = () => {
       // Redirect based on role
       const role = response.data.role;
       if (role === 'admin' || role === 'superadmin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    },
+  });
+};
+
+export const useGoogleLogin = () => {
+  const { setAuth } = useAuthStore();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: googleLoginUser,
+    onSuccess: (response) => {
+      queryClient.clear();
+      setAuth(response.data, response.token);
+
+      if (isManagementUser(response.data)) {
+        navigate('/dashboard');
+      } else if (response.data.role === 'admin' || response.data.role === 'superadmin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/dashboard');

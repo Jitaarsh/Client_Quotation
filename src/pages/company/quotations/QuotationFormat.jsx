@@ -21,10 +21,19 @@ import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import {
   renderCoverPage,
   renderItemsPage,
+  CatalogPdfRenderer,
+  renderCatalogsPage,
   renderSummaryPage,
   renderTermsPage,
   renderCompanyPage
 } from './components/customPageRenderers';
+
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).href;
+}
 
 // Icon Map for dynamic lookup
 const ICON_MAP = {
@@ -38,6 +47,65 @@ const ICON_MAP = {
 const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const [catalogPages, setCatalogPages] = useState([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(false);
+
+  const hasCatalogsPage = pages.some(
+    (page) => page.type === 'catalogs'
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCatalogPages = async () => {
+      if (!hasCatalogsPage) {
+        setCatalogPages([]);
+        setCatalogsLoading(false);
+        return;
+      }
+
+      const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const catalogItems = (quotation.items || []).filter((item) => item.cataloguePdf);
+      const renderedPages = [];
+      setCatalogsLoading(true);
+
+      try {
+        for (const [itemIndex, item] of catalogItems.entries()) {
+          const pdfUrl = item.cataloguePdf.startsWith('http')
+            ? item.cataloguePdf
+            : `${BASE_URL}/${item.cataloguePdf}`;
+          const pdf = await pdfjsLib.getDocument({ url: pdfUrl }).promise;
+
+          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+            renderedPages.push({
+              id: `${item.product || item.name || itemIndex}-${pageNum}`,
+              itemName: item.name,
+              pageNum,
+              showHeader: pageNum === 1,
+              dataUrl: canvas.toDataURL('image/png'),
+            });
+          }
+        }
+
+        if (!cancelled) setCatalogPages(renderedPages);
+      } catch (error) {
+        if (!cancelled) setCatalogPages([]);
+        console.error('Catalog PDF render error:', error);
+      } finally {
+        if (!cancelled) setCatalogsLoading(false);
+      }
+    };
+
+    loadCatalogPages();
+    return () => { cancelled = true; };
+  }, [quotation.items, hasCatalogsPage]);
 
   useEffect(() => {
     const updateScale = () => {
@@ -69,6 +137,11 @@ const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
         return renderCoverPage(resolvedConfig, quotation, companyInfo);
       case 'items':
         return renderItemsPage(page.config, quotation);
+      case 'catalogs':
+        if (catalogsLoading || catalogPages.length === 0) return renderCatalogsPage(quotation);
+        return catalogPages.map((catalogPage) => (
+          <CatalogPdfRenderer key={catalogPage.id} {...catalogPage} />
+        ));
       case 'summary':
         return renderSummaryPage(resolvedConfig, quotation);
       case 'terms':
@@ -86,7 +159,8 @@ const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
   });
   const numPages = renderedPages.length || 1;
   const unscaledPageHeight = 1122.5;
-  const totalUnscaledHeight = unscaledPageHeight * numPages;
+  const pageGap = 24; // Tailwind's gap-6 in the unscaled document wrapper
+  const totalUnscaledHeight = (unscaledPageHeight * numPages) + (pageGap * Math.max(0, numPages - 1));
 
   return (
     <div 
@@ -139,6 +213,12 @@ const QuotationFormat = () => {
   const [validationError, setValidationError] = useState('');
   const [savingDefault, setSavingDefault] = useState(false);
   const [isDefault, setIsDefault] = useState(false);
+
+  const { data: quotationResponse } = useQuery({
+    queryKey: ['quotation', quoteId],
+    queryFn: () => quotationApi.getQuotationById(quoteId),
+    enabled: Boolean(quoteId),
+  });
 
   const EXISTING_COVER_TEMPLATES = [
     { id: 'simple', label: 'Simple' },
@@ -246,15 +326,6 @@ const QuotationFormat = () => {
     }
   };
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url
-      ).href;
-    }
-  }, []);
-
   const extractPdfText = async (file) => {
     const rawData = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: rawData }).promise;
@@ -350,6 +421,8 @@ const QuotationFormat = () => {
         headerBgColor: '#1a2b4b',
         showProductImages: false,
       };
+    } else if (type === 'catalogs') {
+      config = {};
     } else if (type === 'terms') {
       config = {
         termsSource: 'custom',
@@ -545,6 +618,9 @@ const QuotationFormat = () => {
     finalTotal: 10010,
     currency: 'USD'
   };
+  const previewQuotation = quoteId && quotationResponse?.data
+    ? quotationResponse.data
+    : MOCK_QUOTATION;
 
   const renderTemplate = (forceVertical = false) => {
     const props = { isVertical: forceVertical, quotation: MOCK_QUOTATION };
@@ -702,6 +778,12 @@ const QuotationFormat = () => {
                       Terms &amp; Conditions
                     </button>
                     <button
+                      onClick={() => addPage('catalogs')}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-50 text-orange-700 hover:bg-orange-100 rounded-lg text-xs font-bold transition-all duration-200 active:scale-95 border border-orange-100"
+                    >
+                      + Catalogs
+                    </button>
+                    <button
                       onClick={() => addPage('summary')}
                       className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all duration-200 active:scale-95 border border-emerald-100"
                     >
@@ -740,7 +822,7 @@ const QuotationFormat = () => {
                           <div className="flex items-center gap-2">
                             <GripVertical className="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing" />
                             <span className="text-[10px] font-black uppercase tracking-wider bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Page {index + 1}</span>
-                            <span className="text-xs font-bold text-gray-800 capitalize">{page.type === 'items' ? 'Items Table' : page.type === 'company' ? 'Company Info' : page.type === 'terms' ? 'Terms & Conditions' : page.type === 'summary' ? 'Financial Summary' : page.type}</span>
+                            <span className="text-xs font-bold text-gray-800 capitalize">{page.type === 'items' ? 'Items Table' : page.type === 'company' ? 'Company Info' : page.type === 'terms' ? 'Terms & Conditions' : page.type === 'catalogs' ? 'Product Catalogs' : page.type === 'summary' ? 'Financial Summary' : page.type}</span>
                           </div>
 
                           <div className="flex items-center gap-1.5">
@@ -1192,13 +1274,14 @@ const QuotationFormat = () => {
                         let typeBg = 'bg-purple-100 text-purple-700 border-purple-200';
                         if (page.type === 'items') typeBg = 'bg-blue-100 text-blue-700 border-blue-200';
                         if (page.type === 'terms') typeBg = 'bg-amber-100 text-amber-700 border-amber-200';
+                        if (page.type === 'catalogs') typeBg = 'bg-orange-100 text-orange-700 border-orange-200';
                         if (page.type === 'summary') typeBg = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                         if (page.type === 'company') typeBg = 'bg-rose-100 text-rose-700 border-rose-200';
 
                         return (
                           <div key={page.id} className={`w-[110px] aspect-[210/297] border rounded-lg flex flex-col justify-between p-2 shadow-sm ${typeBg}`}>
                             <div className="text-[9px] font-black uppercase tracking-wider">Page {index + 1}</div>
-                            <div className="text-[10px] font-black leading-tight text-center capitalize">{page.type === 'items' ? 'Items Table' : page.type === 'company' ? 'Company Info' : page.type === 'terms' ? 'Terms & Conditions' : page.type === 'summary' ? 'Financial Summary' : page.type}</div>
+                            <div className="text-[10px] font-black leading-tight text-center capitalize">{page.type === 'items' ? 'Items Table' : page.type === 'company' ? 'Company Info' : page.type === 'terms' ? 'Terms & Conditions' : page.type === 'catalogs' ? 'Product Catalogs' : page.type === 'summary' ? 'Financial Summary' : page.type}</div>
                             <div className="w-full h-1 bg-current opacity-30 rounded"></div>
                           </div>
                         );
@@ -1217,7 +1300,7 @@ const QuotationFormat = () => {
                     <p className="text-xs font-bold">Add pages to preview</p>
                   </div>
                 ) : (
-                  <CustomLivePreview pages={pages} quotation={MOCK_QUOTATION} companyInfo={companyInfo} themeColor={themeColor} />
+                  <CustomLivePreview pages={pages} quotation={previewQuotation} companyInfo={companyInfo} themeColor={themeColor} />
                 )}
               </div>
             </div>

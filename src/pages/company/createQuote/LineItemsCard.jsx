@@ -211,6 +211,7 @@ const LineItemsCard = ({ lineItems, setLineItems, currency }) => {
             qty: 1,
             price: initialPrice,
             productImage: product.productImage,
+            cataloguePdf: product.cataloguePdf || '',
             discount: 0,
             total: initialPrice
         };

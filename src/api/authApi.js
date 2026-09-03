@@ -51,3 +51,8 @@ export const changePassword = async (data) => {
   const response = await axiosInstance.put('/auth/change-password', data);
   return response.data;
 };
+
+export const googleLoginUser = async (credential) => {
+  const response = await axiosInstance.post('/auth/google', { credential });
+  return response.data;
+};

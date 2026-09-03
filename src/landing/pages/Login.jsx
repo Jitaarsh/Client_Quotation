@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Lock, ArrowRight, Home, Loader2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import loginImg from '../../assets/login_illustration.png';
-import { useLogin } from '../../hooks/useAuth';
+import { useGoogleLogin, useLogin } from '../../hooks/useAuth';
 import ForgotPasswordModal from '../../components/ForgotPasswordModal';
 
 const Login = () => {
@@ -14,6 +15,7 @@ const Login = () => {
 
   // ── React Query mutation for login ──────────────────────────
   const { mutate: login, isPending, error, isError } = useLogin();
+  const { mutate: googleLogin, isPending: isGooglePending, error: googleError, isError: isGoogleError } = useGoogleLogin();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -67,10 +69,10 @@ const Login = () => {
           </div>
 
           {/* ── Server Error Banner ─────────────────────────── */}
-          {isError && (
+          {(isError || isGoogleError) && (
             <div className="mb-5 flex items-start space-x-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>{errorMessage}</span>
+              <span>{isGoogleError ? (googleError?.response?.data?.message || googleError?.message || 'Google sign-in failed. Please try again.') : errorMessage}</span>
             </div>
           )}
 
@@ -146,6 +148,22 @@ const Login = () => {
               </button>
             </div>
           </form>
+
+          <div className="flex items-center my-4">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="mx-3 text-xs text-gray-400 font-medium">OR</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={(credentialResponse) => googleLogin(credentialResponse.credential)}
+              onError={() => {}}
+              useOneTap={false}
+              width="100%"
+              disabled={isGooglePending || isPending}
+            />
+          </div>
 
           <p className="mt-8 text-center text-gray-500 font-medium text-sm">
             Don't have an account? 

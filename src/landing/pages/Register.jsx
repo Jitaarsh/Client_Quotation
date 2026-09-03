@@ -1,8 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, ArrowLeft, Check, Zap, Building2, MapPin, Phone, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useRegister } from '../../hooks/useAuth';
 import { getPlans } from '../../api/planApi';
-import RazorpayCheckout from '../../payment/RazorpayCheckout';
 import termsApi from '../../services/termsApi';
 import { extractStructuredText, plainTextToHtml } from '../../utils/pdfTextExtractor';
 
@@ -11,9 +10,6 @@ const Register = () => {
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const razorpayCheckoutRef = useRef(null);
-  const [paymentError, setPaymentError] = useState('');
-  const [isPaymentStarting, setIsPaymentStarting] = useState(false);
   const [termsFileName, setTermsFileName] = useState('');
   const [termsPdfLoading, setTermsPdfLoading] = useState(false);
   const [termsPdfError, setTermsPdfError] = useState('');
@@ -192,7 +188,7 @@ const Register = () => {
         termsLabel: prev.termsLabel === 'Standard Terms v1.0' ? file.name.replace(/\.pdf$/i, '') : prev.termsLabel,
       }));
       setTermsPdfError('');
-    } catch (err) {
+    } catch {
       setTermsPdfError('Could not extract text from this PDF. Please paste your T&C manually.');
     } finally {
       setTermsPdfLoading(false);
@@ -246,33 +242,6 @@ const Register = () => {
     });
   };
 
-  const getSelectedPlanAmount = () => {
-    const rawPrice = selectedPlan?.price;
-    if (typeof rawPrice === 'number') return rawPrice;
-    return Number(String(rawPrice || '').replace(/[^0-9.]/g, ''));
-  };
-
-  const handlePaymentSuccess = () => {
-    setPaymentError('');
-    handleRegister();
-  };
-
-  const handlePaymentFailure = (message) => {
-    setPaymentError(message || 'Payment could not be completed. Please try again.');
-  };
-
-  const handleConfirmAndPay = async () => {
-    setPaymentError('');
-
-    if (!isStepValid()) {
-      return;
-    }
-
-    setIsPaymentStarting(true);
-    await razorpayCheckoutRef.current?.openCheckout();
-    setIsPaymentStarting(false);
-  };
-
   // ── Parse server error message ───────────────────────────────
   const errorMessage =
     error?.response?.data?.message ||
@@ -321,11 +290,11 @@ const Register = () => {
                 step === 3 ? 'Contact & Security' :
                   step === 4 ? 'Choose Your Plan' :
                     step === 5 ? 'Default Terms & Conditions' :
-                      'Review Your Details & Payment'
+                      'Review Your Details'
           }
         </h1>
         <div className="mb-8 flex flex-wrap justify-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
-          {['Company', 'Address', 'Contact', 'Plan', 'Terms', 'Payment'].map((label, index) => {
+          {['Company', 'Address', 'Contact', 'Plan', 'Terms', 'Review'].map((label, index) => {
             const stepIndex = index + 1;
             const isActive = step === stepIndex;
             const isCompleted = step > stepIndex;
@@ -355,14 +324,6 @@ const Register = () => {
             <span>{errorMessage}</span>
           </div>
         )}
-
-        {paymentError && step === 6 && (
-          <div className="mb-4 flex items-start space-x-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
-            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>{paymentError}</span>
-          </div>
-        )}
-
 
         {/* Form Container */}
         <div className="bg-white border border-gray-200 rounded-[2rem] p-8 md:p-10 shadow-sm shadow-blue-500/5">
@@ -687,18 +648,6 @@ const Register = () => {
             {step === 6 && (
               /* --- STEP 6: REVIEW YOUR DETAILS --- */
               <div className="w-full space-y-6">
-                <RazorpayCheckout
-                  ref={razorpayCheckoutRef}
-                  amount={getSelectedPlanAmount()}
-                  description={`${selectedPlan?.name || 'Selected'} subscription plan`}
-                  customer={{
-                    name: formData.ownerName,
-                    email: formData.email,
-                    contact: formData.phoneNumber,
-                  }}
-                  onSuccess={handlePaymentSuccess}
-                  onFailure={handlePaymentFailure}
-                />
                 <ReviewSection title="Company Info" icon={Building2}>
                   <ReviewField label="Company Name" value={formData.companyName} />
                   <ReviewField label="Owner Name" value={formData.ownerName} />
@@ -745,15 +694,15 @@ const Register = () => {
                     <span>Previous</span>
                   </button>
                   <button
-                    onClick={handleConfirmAndPay}
-                    disabled={isPending || isPaymentStarting}
+                    onClick={handleRegister}
+                    disabled={isPending}
                     className="flex items-center justify-center space-x-2 bg-[#145be9] text-white px-12 py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer shadow-lg shadow-blue-500/25 text-base active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {isPending || isPaymentStarting ? (
+                    {isPending ? (
                       // Loading state with spinner
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>{isPaymentStarting ? 'Opening Payment...' : 'Submitting...'}</span>
+                        <span>Submitting...</span>
                       </>
                     ) : (
                       <>

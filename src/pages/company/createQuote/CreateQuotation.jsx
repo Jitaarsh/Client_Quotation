@@ -191,6 +191,7 @@ const CreateQuotation = () => {
       qty,
       price,
       productImage: prod.productImage || '',
+      cataloguePdf: prod.cataloguePdf || '',
       discount: 0,
       total: price * qty
     }];
@@ -212,6 +213,7 @@ const CreateQuotation = () => {
         qty: item.qty,
         price: item.price,
         productImage: item.productImage,
+        cataloguePdf: item.cataloguePdf || '',
         discount: item.discount || 0,
         total: item.total,
       }));
@@ -391,6 +393,7 @@ const CreateQuotation = () => {
         price: item.price,
         discount: item.discount,
         productImage: item.productImage,
+        cataloguePdf: item.cataloguePdf || '',
         total: item.total,
       })),
       ...financials,
