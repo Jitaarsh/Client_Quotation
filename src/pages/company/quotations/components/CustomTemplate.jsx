@@ -23,6 +23,16 @@ if (typeof window !== 'undefined') {
   ).href;
 }
 
+const toCatalogueSource = (cataloguePdf) => {
+  if (typeof cataloguePdf === 'string') return cataloguePdf;
+  if (!cataloguePdf?.data || !cataloguePdf?.contentType) return '';
+  return `data:${cataloguePdf.contentType};base64,${cataloguePdf.data}`;
+};
+
+const A4_PAGE_WIDTH = 794;
+const A4_PAGE_HEIGHT = 1123;
+const PAGE_GAP = 24;
+
 const CustomTemplate = ({ quotation, isVertical = false }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -72,13 +82,12 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
         return;
       }
 
-      // Match EditProduct's proven file-preview base URL.
       const BASE_URL = 'http://localhost:5000';
       // Prefer the quotation snapshot, then the populated product. For older
       // quotations that have neither, load the current product record exactly
       // as EditProduct does and retain the original item ordering.
       const resolvedItems = await Promise.all((quotation?.items || []).map(async (item) => {
-        const snapshotPath = item.cataloguePdf || item.product?.cataloguePdf || '';
+        const snapshotPath = toCatalogueSource(item.cataloguePdf || item.product?.cataloguePdf);
         if (snapshotPath) return { ...item, resolvedCataloguePdf: snapshotPath };
 
         const productId = item.product?._id || item.product;
@@ -88,7 +97,7 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
           const productResponse = await productApi.getProductById(productId);
           return {
             ...item,
-            resolvedCataloguePdf: productResponse?.data?.cataloguePdf || '',
+            resolvedCataloguePdf: toCatalogueSource(productResponse?.data?.cataloguePdf),
           };
         } catch (error) {
           console.error('[catalog debug] product lookup failed:', productId, error);
@@ -104,7 +113,7 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
       if (catalogItems.length === 0) {
         setCatalogPages([]);
         setCatalogsLoading(false);
-        setCatalogsError('');
+        setCatalogsError('No catalog PDF is attached.');
         return;
       }
 
@@ -115,7 +124,7 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
       try {
         for (const [itemIndex, item] of catalogItems.entries()) {
           const cataloguePdf = item.resolvedCataloguePdf;
-          const pdfUrl = /^https?:\/\//i.test(cataloguePdf)
+          const pdfUrl = /^https?:\/\//i.test(cataloguePdf) || cataloguePdf.startsWith('data:')
             ? cataloguePdf
             : `${BASE_URL}/${cataloguePdf}`;
 
@@ -147,7 +156,7 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
         console.error('CustomTemplate – catalog PDF render error:', err);
         if (!cancelled) {
           setCatalogPages([]);
-          setCatalogsError('The catalog PDF could not be loaded. Check that its file path is reachable.');
+          setCatalogsError('The catalog PDF could not be loaded.');
         }
       } finally {
         if (!cancelled) setCatalogsLoading(false);
@@ -169,8 +178,7 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
     const updateScale = () => {
       if (containerRef.current && containerRef.current.parentElement) {
         const parentWidth = containerRef.current.parentElement.offsetWidth;
-        const targetWidth = 794;
-        const newScale = parentWidth / targetWidth;
+        const newScale = parentWidth / A4_PAGE_WIDTH;
         setScale(newScale < 1 ? newScale : 1);
       }
     };
@@ -212,7 +220,9 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
         if (catalogsError) {
           return (
             <div className="relative bg-white flex flex-col items-center justify-center shrink-0 w-[794px] h-[1123px] min-w-[794px] min-h-[1123px] border border-gray-100 select-none px-12 text-center">
-              <p className="text-[11px] font-black text-red-500 uppercase tracking-widest">Catalog could not be loaded</p>
+              <p className="text-[11px] font-black text-red-500 uppercase tracking-widest">
+                {catalogsError === 'No catalog PDF is attached.' ? 'No catalog PDF attached' : 'Catalog could not be loaded'}
+              </p>
               <p className="text-[10px] text-gray-400 mt-2">{catalogsError}</p>
             </div>
           );
@@ -253,10 +263,8 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
   });
 
   const numPages = renderedPages.length || 1;
-  const unscaledPageHeight = 1122.5;
-  const pageGap = 24;
   const totalUnscaledHeight =
-    unscaledPageHeight * numPages + pageGap * Math.max(0, numPages - 1);
+    A4_PAGE_HEIGHT * numPages + PAGE_GAP * Math.max(0, numPages - 1);
 
   return (
     <div
@@ -295,7 +303,7 @@ const CustomTemplate = ({ quotation, isVertical = false }) => {
           renderedPages.map((renderedPage, index) => (
             <div key={`rendered-${index}`} className="relative w-full">
               {renderedPage}
-              <div className="absolute bottom-[20px] left-0 right-0 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest pointer-events-none">
+              <div className="absolute bottom-0 left-0 right-0 flex h-9 items-center justify-center border-t border-slate-100 bg-white/90 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest pointer-events-none">
                 PAGE {String(index + 1).padStart(2, '0')} —{' '}
                 {String(numPages).padStart(2, '0')}
               </div>

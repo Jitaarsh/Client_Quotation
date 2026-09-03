@@ -3,6 +3,12 @@ import DesignLayer from './DesignLayer';
 import { ChevronLeft, ChevronRight, Briefcase, BadgeCheck, FileText, User, Info, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { chunkHtmlElements, plainTextToHtml } from '../../../../utils/pdfTextExtractor';
 
+const toProductImageUrl = (productImage) => {
+  if (typeof productImage === 'string') return productImage;
+  if (!productImage?.data || !productImage?.contentType) return '';
+  return `data:${productImage.contentType};base64,${productImage.data}`;
+};
+
 const InstitutionalDesign = ({ quotation, isVertical = false }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -350,9 +356,9 @@ const InstitutionalDesign = ({ quotation, isVertical = false }) => {
                   {data.items?.map((item, idx) => (
                       <div key={idx} className="flex gap-8 p-6 bg-[#F8F9FA] border-l-[4px] border-[#00A98F] relative overflow-hidden group/item">
                           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-slate-200/30 rounded-full group-hover/item:scale-150 transition-transform duration-700"></div>
-                          {item.image && (
+                          {toProductImageUrl(item.productImage || item.image) && (
                               <div className="w-32 h-32 bg-white rounded-lg border border-slate-200 p-2 shrink-0 flex items-center justify-center relative z-10 overflow-hidden shadow-sm">
-                                  <img src={item.image} alt={item.name} className="max-w-full max-h-full object-contain" />
+                                  <img src={toProductImageUrl(item.productImage || item.image)} alt={item.name} className="max-w-full max-h-full object-contain" />
                               </div>
                           )}
                           <div className="flex-1 relative z-10">

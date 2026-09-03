@@ -15,6 +15,12 @@ const currencySymbols = {
   GBP: '£'
 };
 
+const toDataUri = (asset) => {
+  if (typeof asset === 'string') return asset;
+  if (!asset?.data || !asset?.contentType) return '';
+  return `data:${asset.contentType};base64,${asset.data}`;
+};
+
 const ProductTable = ({ products, isLoading, isError, error, filters, setFilters, onDeleteClick, onProductClick }) => {
   const navigate = useNavigate();
 
@@ -157,7 +163,11 @@ const ProductTable = ({ products, isLoading, isError, error, filters, setFilters
 
       {/* Table Body */}
       <div className="divide-y divide-gray-100">
-        {filteredProducts.map((product) => (
+        {filteredProducts.map((product) => {
+          const productImageSrc = toDataUri(product.productImage);
+          const cataloguePdfSrc = toDataUri(product.cataloguePdf);
+
+          return (
           <div key={product._id} className="px-6 py-6 grid grid-cols-12 gap-4 items-center hover:bg-gray-50/50 transition-colors">
             
             {/* Product Name & Image */}
@@ -166,14 +176,14 @@ const ProductTable = ({ products, isLoading, isError, error, filters, setFilters
               onClick={() => onProductClick(product)}
             >
               <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 transition-transform group-hover/item:scale-110 overflow-hidden ${
-                !product.productImage ? (
+                !productImageSrc ? (
                   product.category === 'Materials' ? 'bg-blue-50' : 
                   product.category === 'Services' ? 'bg-emerald-50' : 'bg-amber-50'
                 ) : 'bg-white'
               }`}>
-                {product.productImage ? (
+                {productImageSrc ? (
                   <img 
-                    src={`http://localhost:5000/${product.productImage}`} 
+                    src={productImageSrc}
                     alt={product.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -233,8 +243,8 @@ const ProductTable = ({ products, isLoading, isError, error, filters, setFilters
 
             {/* Assets Status */}
             <div className="col-span-1 flex items-center gap-2">
-               <ImageIcon className={`w-4 h-4 ${product.productImage ? 'text-blue-500' : 'text-gray-200'}`} />
-               <FileText className={`w-4 h-4 ${product.cataloguePdf ? 'text-emerald-500' : 'text-gray-200'}`} />
+               <ImageIcon className={`w-4 h-4 ${productImageSrc ? 'text-blue-500' : 'text-gray-200'}`} />
+               <FileText className={`w-4 h-4 ${cataloguePdfSrc ? 'text-emerald-500' : 'text-gray-200'}`} />
                <Video className="w-4 h-4 text-gray-100" />
             </div>
 
@@ -254,8 +264,9 @@ const ProductTable = ({ products, isLoading, isError, error, filters, setFilters
               </button>
             </div>
             
-            </div>
-          ))}
+          </div>
+          );
+        })}
         </div>
       </div>
       </div>

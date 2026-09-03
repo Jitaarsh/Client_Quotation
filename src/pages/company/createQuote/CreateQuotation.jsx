@@ -20,6 +20,12 @@ const toFiniteNumber = (value, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback;
 };
 
+const toDataUri = (asset) => {
+  if (typeof asset === 'string') return asset;
+  if (!asset?.data || !asset?.contentType) return '';
+  return `data:${asset.contentType};base64,${asset.data}`;
+};
+
 const getTierPrice = (product, qty) => {
   const basePrice = toFiniteNumber(product?.basePrice, 0);
 
@@ -190,8 +196,8 @@ const CreateQuotation = () => {
       sku: prod.sku || 'N/A',
       qty,
       price,
-      productImage: prod.productImage || '',
-      cataloguePdf: prod.cataloguePdf || '',
+      productImage: toDataUri(prod.productImage),
+      cataloguePdf: toDataUri(prod.cataloguePdf),
       discount: 0,
       total: price * qty
     }];
@@ -212,8 +218,8 @@ const CreateQuotation = () => {
         sku: item.sku,
         qty: item.qty,
         price: item.price,
-        productImage: item.productImage,
-        cataloguePdf: item.cataloguePdf || '',
+        productImage: toDataUri(item.productImage),
+        cataloguePdf: toDataUri(item.cataloguePdf),
         discount: item.discount || 0,
         total: item.total,
       }));
@@ -392,8 +398,8 @@ const CreateQuotation = () => {
         qty: item.qty,
         price: item.price,
         discount: item.discount,
-        productImage: item.productImage,
-        cataloguePdf: item.cataloguePdf || '',
+        productImage: toDataUri(item.productImage),
+        cataloguePdf: toDataUri(item.cataloguePdf),
         total: item.total,
       })),
       ...financials,

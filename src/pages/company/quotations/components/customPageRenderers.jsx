@@ -9,6 +9,12 @@ const currencySymbols = {
   GBP: '£',
 };
 
+const toProductImageUrl = (productImage) => {
+  if (typeof productImage === 'string') return productImage;
+  if (!productImage?.data || !productImage?.contentType) return '';
+  return `data:${productImage.contentType};base64,${productImage.data}`;
+};
+
 export const formatMoney = (amount = 0, currency = 'USD') => {
   const symbol = currencySymbols[currency] || currencySymbols.USD;
   return `${symbol}${Number(amount).toLocaleString('en-US', {
@@ -696,10 +702,11 @@ export const renderItemsPage = (config, data) => {
       <div className="flex flex-col flex-1">
         {data.items?.map((item, idx) => {
           let imgUrl = null;
-          if (item.productImage) {
-            imgUrl = item.productImage.startsWith('http')
-              ? item.productImage
-              : `${BASE_URL}/${item.productImage}`;
+          const productImageUrl = toProductImageUrl(item.productImage);
+          if (productImageUrl) {
+            imgUrl = productImageUrl.startsWith('http') || productImageUrl.startsWith('data:')
+              ? productImageUrl
+              : `${BASE_URL}/${productImageUrl}`;
           }
 
           const description = item.description?.trim() || FALLBACK_DESC;

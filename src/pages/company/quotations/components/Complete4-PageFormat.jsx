@@ -3,6 +3,12 @@ import DesignLayer from './DesignLayer';
 import { ChevronLeft, ChevronRight, Box, Settings, Zap, Layers, Globe, Info, FileText, Layout, ShieldCheck, Mail, MapPin } from 'lucide-react';
 import { chunkHtmlElements, plainTextToHtml } from '../../../../utils/pdfTextExtractor';
 
+const toProductImageUrl = (productImage) => {
+  if (typeof productImage === 'string') return productImage;
+  if (!productImage?.data || !productImage?.contentType) return '';
+  return `data:${productImage.contentType};base64,${productImage.data}`;
+};
+
 const Complete4PageFormat = ({ quotation, isVertical = false }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -327,10 +333,11 @@ const Complete4PageFormat = ({ quotation, isVertical = false }) => {
   const PageFour = ({ items, pageNum, totalPages }) => {
     const apiBaseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
-    const getImageUrl = (path) => {
-      if (!path) return null;
-      if (path.startsWith('http')) return path;
-      return `${apiBaseUrl}/${path}`;
+    const getImageUrl = (productImage) => {
+      const imageUrl = toProductImageUrl(productImage);
+      if (!imageUrl) return null;
+      if (imageUrl.startsWith('http') || imageUrl.startsWith('data:')) return imageUrl;
+      return `${apiBaseUrl}/${imageUrl}`;
     };
 
     return (
@@ -375,7 +382,7 @@ const Complete4PageFormat = ({ quotation, isVertical = false }) => {
                    <h3 className="text-[18px] font-bold text-[#111827] leading-[1.2] mb-4">{item.name}</h3>
                    
                    <div className="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group">
-                      {item.productImage ? (
+                      {getImageUrl(item.productImage) ? (
                         <img 
                           src={getImageUrl(item.productImage)} 
                           alt={item.name} 

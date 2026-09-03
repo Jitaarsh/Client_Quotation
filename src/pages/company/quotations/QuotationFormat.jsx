@@ -44,11 +44,18 @@ const ICON_MAP = {
   Square: <Square className="w-5 h-5" />,
 };
 
+const toCatalogueSource = (cataloguePdf) => {
+  if (typeof cataloguePdf === 'string') return cataloguePdf;
+  if (!cataloguePdf?.data || !cataloguePdf?.contentType) return '';
+  return `data:${cataloguePdf.contentType};base64,${cataloguePdf.data}`;
+};
+
 const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [catalogPages, setCatalogPages] = useState([]);
   const [catalogsLoading, setCatalogsLoading] = useState(false);
+  const [catalogsError, setCatalogsError] = useState('');
 
   const hasCatalogsPage = pages.some(
     (page) => page.type === 'catalogs'
@@ -61,19 +68,28 @@ const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
       if (!hasCatalogsPage) {
         setCatalogPages([]);
         setCatalogsLoading(false);
+        setCatalogsError('');
         return;
       }
 
       const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-      const catalogItems = (quotation.items || []).filter((item) => item.cataloguePdf);
+      const catalogItems = (quotation.items || []).filter((item) => toCatalogueSource(item.cataloguePdf));
+      if (catalogItems.length === 0) {
+        setCatalogPages([]);
+        setCatalogsLoading(false);
+        setCatalogsError('No catalog PDF is attached.');
+        return;
+      }
       const renderedPages = [];
       setCatalogsLoading(true);
+      setCatalogsError('');
 
       try {
         for (const [itemIndex, item] of catalogItems.entries()) {
-          const pdfUrl = item.cataloguePdf.startsWith('http')
-            ? item.cataloguePdf
-            : `${BASE_URL}/${item.cataloguePdf}`;
+          const catalogueSource = toCatalogueSource(item.cataloguePdf);
+          const pdfUrl = /^https?:\/\//i.test(catalogueSource) || catalogueSource.startsWith('data:')
+            ? catalogueSource
+            : `${BASE_URL}/${catalogueSource}`;
           const pdf = await pdfjsLib.getDocument({ url: pdfUrl }).promise;
 
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
@@ -96,7 +112,10 @@ const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
 
         if (!cancelled) setCatalogPages(renderedPages);
       } catch (error) {
-        if (!cancelled) setCatalogPages([]);
+        if (!cancelled) {
+          setCatalogPages([]);
+          setCatalogsError('The catalog PDF could not be loaded.');
+        }
         console.error('Catalog PDF render error:', error);
       } finally {
         if (!cancelled) setCatalogsLoading(false);
@@ -138,6 +157,12 @@ const CustomLivePreview = ({ pages, quotation, companyInfo, themeColor }) => {
       case 'items':
         return renderItemsPage(page.config, quotation);
       case 'catalogs':
+        if (catalogsError) {
+          return renderCatalogsPage({
+            ...quotation,
+            items: [],
+          });
+        }
         if (catalogsLoading || catalogPages.length === 0) return renderCatalogsPage(quotation);
         return catalogPages.map((catalogPage) => (
           <CatalogPdfRenderer key={catalogPage.id} {...catalogPage} />
