@@ -596,6 +596,22 @@ const QuotationHubView = ({ quotation, onBack, navigate }) => {
   const templateId = quotation.templateSettings?.templateId || 'simple';
   const responseStatus = getResponseStatus(quotation);
   const printRef = React.useRef(null);
+  const queryClient = useQueryClient();
+  const [isSharingPdf, setIsSharingPdf] = useState(false);
+
+  const handleShareQuotation = async () => {
+    setIsSharingPdf(true);
+    try {
+      const response = await quotationApi.shareQuotations([quotation._id]);
+      alert(response.message || 'Shared 1 quotation');
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quotation', quotation._id] });
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to share quotation');
+    } finally {
+      setIsSharingPdf(false);
+    }
+  };
 
   const handleExportPdf = useReactToPrint({
     contentRef: printRef,
@@ -697,6 +713,18 @@ const QuotationHubView = ({ quotation, onBack, navigate }) => {
             >
               <Download className="h-3.5 w-3.5" />
               Export PDF
+            </button>
+            <button
+              onClick={handleShareQuotation}
+              disabled={isSharingPdf}
+              className="px-5 py-2 rounded-xl text-[11px] font-black text-white bg-[#145be9] hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap disabled:opacity-60"
+            >
+              {isSharingPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Share2 className="h-3.5 w-3.5" />
+              )}
+              {isSharingPdf ? 'Sending...' : 'Share PDF'}
             </button>
           </div>
         </div>
